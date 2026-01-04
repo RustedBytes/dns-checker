@@ -283,27 +283,45 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     end - start
                 );
                 let domains = Arc::clone(&domains);
-                    join_set.spawn_blocking(move || {
-                        gnu_c_backend::resolve_domains_gnu_c(
-                            &domains[start..end],
-                            ipv4_only,
-                        )
-                    });
+                join_set.spawn_blocking(move || {
+                    let resolved = gnu_c_backend::resolve_domains_gnu_c(
+                        &domains[start..end],
+                        ipv4_only,
+                    );
+                    (start, resolved)
+                });
             }
 
             while let Some(result) = join_set.join_next().await {
                 match result {
-                    Ok(resolved) => {
+                    Ok((start, resolved)) => {
                         info!("Batch completed with {} results", resolved.len());
-                        for (domain, alive) in resolved {
-                            if let Some(indices) = domain_indices.remove(&domain) {
-                                for idx in &indices {
-                                    results[*idx] = Some(LineResult::Checked { alive });
+                        for (offset, outcome) in resolved.into_iter().enumerate() {
+                            let domain = &domains[start + offset];
+                            match outcome {
+                                Some(alive) => {
+                                    if let Some(indices) = domain_indices.remove(domain) {
+                                        for idx in &indices {
+                                            results[*idx] =
+                                                Some(LineResult::Checked { alive });
+                                        }
+                                        processed += 1;
+                                        log_progress(processed);
+                                    } else {
+                                        warn!("Received result for unknown domain {}", domain);
+                                    }
                                 }
-                                processed += 1;
-                                log_progress(processed);
-                            } else {
-                                warn!("Received result for unknown domain {}", domain);
+                                None => {
+                                    if let Some(indices) = domain_indices.remove(domain) {
+                                        for idx in &indices {
+                                            results[*idx] = Some(LineResult::Error);
+                                        }
+                                        processed += 1;
+                                        log_progress(processed);
+                                    } else {
+                                        warn!("Received result for unknown domain {}", domain);
+                                    }
+                                }
                             }
                         }
                     }

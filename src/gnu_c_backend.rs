@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
 use std::sync::Once;
@@ -31,10 +30,10 @@ mod gnu_c {
     pub const GAI_WAIT: c_int = 0;
 }
 
-pub fn resolve_domains_gnu_c(domains: &[String], ipv4_only: bool) -> HashMap<String, bool> {
-    let mut results = HashMap::with_capacity(domains.len());
+pub fn resolve_domains_gnu_c(domains: &[String], ipv4_only: bool) -> Vec<Option<bool>> {
+    let mut results = vec![None; domains.len()];
     let mut target_c_strings: Vec<CString> = Vec::with_capacity(domains.len());
-    let mut domain_refs: Vec<&String> = Vec::with_capacity(domains.len());
+    let mut valid_indices: Vec<usize> = Vec::with_capacity(domains.len());
 
     static RES_INIT: Once = Once::new();
     RES_INIT.call_once(|| {
@@ -44,11 +43,11 @@ pub fn resolve_domains_gnu_c(domains: &[String], ipv4_only: bool) -> HashMap<Str
         }
     });
 
-    for domain in domains {
+    for (idx, domain) in domains.iter().enumerate() {
         match CString::new(domain.as_str()) {
             Ok(c_str) => {
                 target_c_strings.push(c_str);
-                domain_refs.push(domain);
+                valid_indices.push(idx);
             }
             Err(_) => {
                 warn!("Skipping domain with NUL byte: {}", domain);
@@ -93,19 +92,24 @@ pub fn resolve_domains_gnu_c(domains: &[String], ipv4_only: bool) -> HashMap<Str
 
     if ret != 0 {
         warn!("getaddrinfo_a failed with code: {}", ret);
-        for domain in &domain_refs {
-            results.insert((*domain).clone(), false);
+        for idx in valid_indices {
+            results[idx] = Some(false);
         }
         return results;
     }
 
+    let mut to_free: Vec<*mut libc::addrinfo> = Vec::with_capacity(gaicb_structs.len());
     for (idx, cb) in gaicb_structs.iter().enumerate() {
         let alive = cb.ar_errno == 0;
-        results.insert(domain_refs[idx].to_string(), alive);
+        results[valid_indices[idx]] = Some(alive);
 
         if !cb.ar_result.is_null() {
-            unsafe { libc::freeaddrinfo(cb.ar_result) };
+            to_free.push(cb.ar_result);
         }
+    }
+
+    for result in to_free {
+        unsafe { libc::freeaddrinfo(result) };
     }
 
     results
