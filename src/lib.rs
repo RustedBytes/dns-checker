@@ -16,6 +16,8 @@ use tokio::task::JoinSet;
 
 #[cfg(all(target_os = "linux", feature = "gnu-c"))]
 mod gnu_c_backend;
+#[cfg(feature = "python")]
+mod python;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Backend {

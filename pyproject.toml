@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "dns-checker"
+version = "0.1.0"
+description = "Check domain liveness via DNS lookups"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.maturin]
+features = ["python", "gnu-c"]
+module-name = "dns_checker"
