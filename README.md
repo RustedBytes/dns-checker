@@ -2,6 +2,21 @@
 
 CLI tool to check domain liveness via DNS lookups and emit JSON results.
 
+## Installation
+
+```bash
+cargo install dns-checker
+```
+
+```bash
+cargo add dns-checker
+```
+
+```toml
+[dependencies]
+dns-checker = "0.1.0"
+```
+
 ## Usage
 
 ```bash
