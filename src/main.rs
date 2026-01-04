@@ -153,8 +153,8 @@ fn tune_resolver_opts(opts: &mut ResolverOpts) {
 #[cfg(target_os = "linux")]
 fn resolve_domains_gnu_c(domains: &[String], ipv4_only: bool) -> HashMap<String, bool> {
     let mut results = HashMap::with_capacity(domains.len());
-    let mut target_c_strings: Vec<CString> = Vec::new();
-    let mut domain_refs: Vec<&String> = Vec::new();
+    let mut target_c_strings: Vec<CString> = Vec::with_capacity(domains.len());
+    let mut domain_refs: Vec<&String> = Vec::with_capacity(domains.len());
 
     static RES_INIT: Once = Once::new();
     RES_INIT.call_once(|| {
@@ -378,24 +378,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
             #[cfg(target_os = "linux")]
             {
                 let mut join_set = JoinSet::new();
+                let domains = Arc::new(unique_domains);
                 let total_batches =
-                    (unique_domains.len() + concurrency.saturating_sub(1)) / concurrency;
+                    (domains.len() + concurrency.saturating_sub(1)) / concurrency;
                 info!(
                     "Scheduling {} batches (batch_size={}) for GNU C backend",
                     total_batches, concurrency
                 );
-                let mut batch_idx = 0usize;
-
-                for batch in unique_domains.chunks(concurrency) {
-                    batch_idx += 1;
+                for batch_idx in 0..total_batches {
+                    let start = batch_idx * concurrency;
+                    let end = (start + concurrency).min(domains.len());
                     info!(
                         "Starting batch {}/{} ({} domains)",
-                        batch_idx,
+                        batch_idx + 1,
                         total_batches,
-                        batch.len()
+                        end - start
                     );
-                    let batch = batch.to_vec();
-                    join_set.spawn_blocking(move || resolve_domains_gnu_c(&batch, ipv4_only));
+                    let domains = Arc::clone(&domains);
+                    join_set.spawn_blocking(move || resolve_domains_gnu_c(&domains[start..end], ipv4_only));
                 }
 
                 while let Some(result) = join_set.join_next().await {
