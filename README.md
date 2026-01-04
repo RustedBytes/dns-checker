@@ -1,5 +1,7 @@
 # dns-checker
 
+[![Crates.io Version](https://img.shields.io/crates/v/dns-checker)](https://crates.io/crates/dns-checker)
+
 CLI tool to check domain liveness via DNS lookups and emit JSON results.
 
 ## Installation
