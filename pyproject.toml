@@ -7,7 +7,9 @@ name = "dns-checker"
 version = "0.1.0"
 description = "Check domain liveness via DNS lookups"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
+urls = { Repository = "https://github.com/RustedBytes/dns-checker" }
 
 [tool.maturin]
 features = ["python", "gnu-c"]
