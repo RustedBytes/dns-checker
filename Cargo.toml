@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/RustedBytes/dns-checker"
+description = "Check domain liveness via DNS lookups"
+readme = "README.md"
+homepage = "https://github.com/RustedBytes/dns-checker"
+documentation = "https://docs.rs/dns-checker"
+keywords = ["dns", "cli", "domain", "resolver", "network"]
+categories = ["command-line-utilities", "network-programming"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
